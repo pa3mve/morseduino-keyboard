@@ -9,7 +9,7 @@ import queue
 import sys
 import threading
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk
 
 import serial
 import serial.tools.list_ports
@@ -161,52 +161,100 @@ class App:
     # ------------------------------------------------------------------ UI --
 
     def _build_ui(self, kb_info: str = "") -> None:
-        pad = {"padx": 6, "pady": 3}
-        f = ttk.Frame(self.root, padding=12)
-        f.grid(sticky="nsew")
+        BG        = "#111111"
+        BLUE      = "#6699ff"
+        TITLE_RED = "#ff3300"
+        SUBTITLE  = "#ff6633"
+        BTN_BG    = "#cccccc"
+        BTN_FG    = "#111111"
 
-        # -- Port row --
-        ttk.Label(f, text="COM port:").grid(row=0, column=0, sticky="w", **pad)
+        self.root.configure(bg=BG)
+        self.root.title("Morse Academy – CW decoder")
+
+        # Outer padding frame
+        outer = tk.Frame(self.root, bg=BG, padx=10, pady=10)
+        outer.pack(fill="both", expand=True)
+
+        # -- Title --
+        tk.Label(outer, text="Morse Academy",
+                 bg=BG, fg=TITLE_RED,
+                 font=("Arial", 26, "bold")).pack()
+        tk.Label(outer, text="CW decoder",
+                 bg=BG, fg=SUBTITLE,
+                 font=("Arial", 21)).pack()
+
+        # -- Text display --
+        self._log = tk.Text(
+            outer, width=50, height=8,
+            bg=BLUE, fg="white",
+            font=("Arial", 28), wrap="word",
+            relief="flat", bd=0,
+            state="disabled",
+            insertbackground="white",
+        )
+        self._log.pack(fill="both", expand=False, pady=(8, 8))
+
+        # -- Bottom control row --
+        ctrl = tk.Frame(outer, bg=BG)
+        ctrl.pack(fill="x")
+
+        # Shared font for all controls in the row — drives uniform height
+        CTRL_FONT = ("Arial", 10)
+        BTN_PAD   = {"pady": 4, "ipady": 2}
+
+        # Port combobox
         self._port_var = tk.StringVar()
-        self._port_cb = ttk.Combobox(f, textvariable=self._port_var,
-                                     width=22, state="readonly")
-        self._port_cb.grid(row=0, column=1, sticky="ew", **pad)
-        ttk.Button(f, text="↻", width=3,
-                   command=self._refresh_ports).grid(row=0, column=2, **pad)
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("Port.TCombobox",
+                         fieldbackground=BTN_BG, background=BTN_BG,
+                         foreground=BTN_FG, arrowcolor=BTN_FG,
+                         font=CTRL_FONT, padding=(4, 4))
+        self._port_cb = ttk.Combobox(ctrl, textvariable=self._port_var,
+                                     width=12, state="readonly",
+                                     font=CTRL_FONT,
+                                     style="Port.TCombobox")
+        self._port_cb.pack(side="left", padx=(0, 4))
 
-        # -- Options --
+        # Refresh button
+        tk.Button(ctrl, text="Refresh", width=6,
+                  bg=BTN_BG, fg=BTN_FG,
+                  relief="raised", bd=2,
+                  font=CTRL_FONT,
+                  command=self._refresh_ports).pack(side="left", padx=(0, 4), **BTN_PAD)
+
+        # Connect button
+        self._btn = tk.Button(ctrl, text="Connect", width=8,
+                              bg=BTN_BG, fg=BTN_FG,
+                              relief="raised", bd=2,
+                              font=CTRL_FONT,
+                              command=self._toggle)
+        self._btn.configure(takefocus=False)
+        self._btn.pack(side="left", padx=(0, 4), **BTN_PAD)
+
+        # Clear button
+        tk.Button(ctrl, text="Clear", width=6,
+                  bg=BTN_BG, fg=BTN_FG,
+                  relief="raised", bd=2,
+                  font=CTRL_FONT,
+                  command=self._clear_log).pack(side="left", **BTN_PAD)
+
+        # -- Options row --
+        opts = tk.Frame(outer, bg=BG)
+        opts.pack(fill="x", pady=(6, 0))
+
         self._lower_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(f, text="Convert CAPS → lowercase",
-                        variable=self._lower_var).grid(
-            row=1, column=0, columnspan=3, sticky="w", **pad)
-
-        ttk.Label(f, text=f"Keyboard: {kb_info}",
-                  foreground="#555").grid(row=2, column=0, columnspan=3,
-                                          sticky="w", **pad)
-
-        # -- Connect button --
-        self._btn = ttk.Button(f, text="Connect", command=self._toggle)
-        self._btn.configure(takefocus=False)   # prevent Enter from triggering it
-        self._btn.grid(row=3, column=0, columnspan=3, sticky="ew",
-                       pady=(6, 3), padx=6)
+        tk.Checkbutton(opts, text="Convert CAPS → lowercase",
+                       variable=self._lower_var,
+                       bg=BG, fg="#aaaaaa",
+                       selectcolor=BG,
+                       activebackground=BG, activeforeground="#cccccc").pack(side="left")
 
         # -- Status --
         self._status_var = tk.StringVar(value="Disconnected")
-        ttk.Label(f, textvariable=self._status_var,
-                  foreground="gray").grid(row=4, column=0, columnspan=3,
-                                          sticky="w", **pad)
-
-        # -- Log --
-        ttk.Label(f, text="Received:").grid(row=5, column=0, sticky="w",
-                                             padx=6, pady=(10, 0))
-        self._log = scrolledtext.ScrolledText(
-            f, width=44, height=10, state="disabled",
-            font=("Courier New", 9), wrap="word")
-        self._log.grid(row=6, column=0, columnspan=3, padx=6, pady=(0, 6))
-
-        ttk.Button(f, text="Clear log",
-                   command=self._clear_log).grid(row=7, column=2,
-                                                  sticky="e", padx=6, pady=(0, 6))
+        tk.Label(opts, textvariable=self._status_var,
+                 bg=BG, fg="#888888",
+                 font=("Arial", 9)).pack(side="right")
 
     # --------------------------------------------------------- Port helpers --
 
