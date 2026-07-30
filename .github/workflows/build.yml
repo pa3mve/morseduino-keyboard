@@ -40,11 +40,11 @@ jobs:
       # Rename so each artifact has a unique OS suffix before uploading
       - name: Rename artifact (Linux / macOS)
         if: runner.os != 'Windows'
-        run: mv dist/SerialKeyboard dist/SerialKeyboard-${{ runner.os }}
+        run: mv dist/SerialKeyboard dist/morseduino-keyboard-${{ runner.os }}
 
       - name: Rename artifact (Windows)
         if: runner.os == 'Windows'
-        run: Rename-Item dist\SerialKeyboard.exe SerialKeyboard-Windows.exe
+        run: Rename-Item dist\SerialKeyboard.exe morseduino-keyboard-Windows.exe
         shell: pwsh
 
       - name: Upload build artifact
