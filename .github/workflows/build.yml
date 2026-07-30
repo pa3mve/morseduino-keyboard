@@ -51,7 +51,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: SerialKeyboard-${{ runner.os }}
-          path: dist/SerialKeyboard-*
+          path: dist/morseduino-keyboard-*
 
   # Only runs when a version input is provided.
   release:
