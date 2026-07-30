@@ -1,10 +1,13 @@
 name: Build
 
-# Trigger on version tags (v1.0, v1.2.3, …) or manually via Actions tab.
+# Trigger manually via Actions tab.
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. v1.0.0) — leave empty to skip release'
+        required: false
+        default: ''
 
 jobs:
   build:
@@ -50,10 +53,10 @@ jobs:
           name: SerialKeyboard-${{ runner.os }}
           path: dist/SerialKeyboard-*
 
-  # Only runs when a tag triggered the workflow; waits for all builds.
+  # Only runs when a version input is provided.
   release:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/')
+    if: ${{ github.event.inputs.version != '' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -69,6 +72,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ github.event.inputs.version }}
           files: dist/SerialKeyboard-*
           generate_release_notes: true
