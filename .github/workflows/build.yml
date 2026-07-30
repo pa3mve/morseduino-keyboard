@@ -1,0 +1,72 @@
+name: Build
+
+# Trigger on version tags (v1.0, v1.2.3, …) or manually via Actions tab.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # tkinter is not pre-installed on the GitHub Ubuntu image
+      - name: Install tkinter (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y python3-tk
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build single-file executable
+        run: pyinstaller --clean serial_keyboard.spec
+
+      # Rename so each artifact has a unique OS suffix before uploading
+      - name: Rename artifact (Linux / macOS)
+        if: runner.os != 'Windows'
+        run: mv dist/SerialKeyboard dist/SerialKeyboard-${{ runner.os }}
+
+      - name: Rename artifact (Windows)
+        if: runner.os == 'Windows'
+        run: Rename-Item dist\SerialKeyboard.exe SerialKeyboard-Windows.exe
+        shell: pwsh
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SerialKeyboard-${{ runner.os }}
+          path: dist/SerialKeyboard-*
+
+  # Only runs when a tag triggered the workflow; waits for all builds.
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/SerialKeyboard-*
+          generate_release_notes: true
